@@ -2,7 +2,8 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from utils.config import AREAS, AREAS_SIN_FUENTE
+from utils.acceso import correo_actual, resolver_acceso
+from utils.config import AREAS_SIN_FUENTE
 from utils.data import EDIFICIOS_LISTA, cargar_datos, supabase_configurado
 
 st.set_page_config(page_title="Productividad por área", page_icon=":material/monitoring:", layout="wide")
@@ -10,6 +11,7 @@ st.set_page_config(page_title="Productividad por área", page_icon=":material/mo
 page = st.navigation(
     [
         st.Page("app_pages/resumen.py", title="Resumen general", icon=":material/dashboard:"),
+        st.Page("app_pages/comparativo.py", title="Comparativo de áreas", icon=":material/compare_arrows:"),
         st.Page("app_pages/area.py", title="Detalle por área", icon=":material/lan:"),
         st.Page("app_pages/personas.py", title="Personas", icon=":material/group:"),
         st.Page("app_pages/asistencia.py", title="Asistencia y vacaciones", icon=":material/event_available:"),
@@ -17,29 +19,44 @@ page = st.navigation(
     position="top",
 )
 
+datos = cargar_datos()
+acceso = resolver_acceso(datos["colaboradores"])
+st.session_state.acceso = acceso
+if acceso is None:
+    st.error(
+        f"El correo {correo_actual() or '(sin correo)'} no tiene acceso a este dashboard. "
+        "Pide al administrador que lo dé de alta.",
+        title="Sin acceso",
+        icon=":material/lock:",
+    )
+    st.stop()
+
 hoy = date.today()
 with st.sidebar:
+    if acceso["correo"]:
+        st.caption(f":material/account_circle: {acceso['nombre']} · {acceso['correo']}")
+        if acceso["personas"] is not None:
+            st.caption(f"Vista de tu equipo: {len(acceso['personas'])} personas")
+
     st.header("Filtros")
-    periodo = st.date_input(
-        "Periodo",
-        value=(hoy - timedelta(days=29), hoy),
-        max_value=hoy,
-        format="DD/MM/YYYY",
-        key="periodo",
-    )
-    areas = st.pills("Áreas", AREAS, selection_mode="multi", default=AREAS, key="areas")
+    with st.container(horizontal=True):
+        fecha_inicio = st.date_input("Fecha inicio", value=hoy - timedelta(days=29), max_value=hoy,
+                                     format="DD/MM/YYYY", key="fecha_inicio")
+        fecha_fin = st.date_input("Fecha fin", value=hoy, max_value=hoy, format="DD/MM/YYYY", key="fecha_fin")
+    areas = st.pills("Áreas", acceso["areas"], selection_mode="multi", default=acceso["areas"],
+                     key=f"areas_{acceso['correo'] or 'local'}")
     edificios = st.multiselect(
         "Edificios", EDIFICIOS_LISTA, default=EDIFICIOS_LISTA, key="edificios", help="Aplica solo a tickets"
     )
 
     st.divider()
-    datos = cargar_datos()
     st.markdown("**Fuentes de datos**")
     for nombre, fuente in datos["fuentes"].items():
         icono = ":material/science:" if fuente == "Demo" else ":material/cloud_done:"
         st.caption(f"{icono} {nombre.capitalize()}: {fuente}")
     for area, fuente in AREAS_SIN_FUENTE.items():
-        st.caption(f":material/schedule: {area}: {fuente}")
+        if area in acceso["areas"]:
+            st.caption(f":material/schedule: {area}: {fuente}")
     if etl := datos["etl"]:
         estado = ":green[ok]" if etl["estado"] == "ok" else ":red[error]"
         st.caption(f"Última carga de datos: {etl['fin'][:16].replace('T', ' ')} · {estado}")
@@ -53,15 +70,15 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
 
-if len(periodo) < 2:
-    st.info("Selecciona fecha inicial y final del periodo.", icon=":material/date_range:")
+if fecha_inicio > fecha_fin:
+    st.warning("La fecha de inicio debe ser anterior o igual a la fecha fin.", icon=":material/date_range:")
     st.stop()
 if not areas or not edificios:
     st.info("Selecciona al menos un área y un edificio.", icon=":material/filter_alt:")
     st.stop()
 
-st.session_state.filtro = (periodo[0], periodo[1], areas, edificios)
+st.session_state.filtro = (fecha_inicio, fecha_fin, areas, edificios)
 
 st.title(page.title)
-st.caption(f"{periodo[0]:%d/%m/%Y} – {periodo[1]:%d/%m/%Y} · comparado contra el periodo anterior de igual duración")
+st.caption(f"{fecha_inicio:%d/%m/%Y} – {fecha_fin:%d/%m/%Y} · comparado contra el periodo anterior de igual duración")
 page.run()

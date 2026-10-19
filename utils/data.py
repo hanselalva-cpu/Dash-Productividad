@@ -388,3 +388,18 @@ def _demo_asistencia(col: pd.DataFrame, rng: np.random.Generator) -> pd.DataFram
                 fila["estatus"] = "retardo" if fila["retardo"] else "asistencia"
             filas.append(fila)
     return pd.DataFrame(filas)
+
+
+# =============================================================================
+# Acceso
+# =============================================================================
+
+
+def datos_visibles() -> dict:
+    """Datos recortados a lo que puede ver el usuario actual (ver utils/acceso.py). Usar en todas las páginas."""
+    from utils.acceso import restringir
+
+    acceso = st.session_state.get("acceso")
+    if not acceso:
+        st.stop()  # sin acceso resuelto no se muestra nada
+    return restringir(cargar_datos(), acceso["personas"], acceso["areas"])

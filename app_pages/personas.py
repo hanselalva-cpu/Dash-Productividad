@@ -1,10 +1,11 @@
 import streamlit as st
 
 from utils.metrics import resumen_por
-from utils.data import cargar_datos, filtrar
+from utils.data import datos_visibles, filtrar
 
 inicio, fin, areas, edificios = st.session_state.filtro
-f = filtrar(cargar_datos(), inicio, fin, areas, edificios)
+datos = datos_visibles()
+f = filtrar(datos, inicio, fin, areas, edificios)
 
 personas = (
     f["colaboradores"]
@@ -29,7 +30,7 @@ vista = vista.sort_values(columna_orden, ascending=False)
 
 with st.container(border=True):
     st.subheader("Línea de reporte")
-    todos = cargar_datos()["colaboradores"]
+    todos = datos["colaboradores"]
     if todos["reporta_a_id"].notna().any():
         cerrados = f["tickets"][f["tickets"]["estado"] == "cerrado"].groupby("colaborador_id").size()
         nodos = []
@@ -41,7 +42,9 @@ with st.container(border=True):
             estilo = "filled" if dentro else "filled,dashed"
             color = "#DBEAFE" if dentro else "#F1F5F9"
             nodos.append(f'"{c["id"]}" [label="{etiqueta}", style="{estilo}", fillcolor="{color}"];')
-        aristas = [f'"{c["reporta_a_id"]}" -> "{c["id"]}";' for _, c in todos.dropna(subset=["reporta_a_id"]).iterrows()]
+        visibles = set(todos["id"])  # el jefe de un usuario restringido no se dibuja
+        aristas = [f"\"{c['reporta_a_id']}\" -> \"{c['id']}\";" for _, c in todos.dropna(subset=["reporta_a_id"]).iterrows()
+                   if c["reporta_a_id"] in visibles]
         st.graphviz_chart(
             "digraph { rankdir=LR; nodesep=0.15; ranksep=0.6; "
             'node [shape=box, fontname="Arial", fontsize=10, color="#94A3B8"]; edge [color="#94A3B8"]; '

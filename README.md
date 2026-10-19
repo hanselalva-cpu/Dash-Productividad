@@ -74,6 +74,9 @@ Sin `secrets.toml` los tickets salen en modo demo.
 1. https://share.streamlit.io → **Create app** → repo `Dash-Productividad`, rama `main`, archivo `streamlit_app.py`.
 2. **Advanced settings → Secrets**: pegar el contenido de `.streamlit/secrets.toml`.
 3. **Share**: el repo es privado, así que la app solo la ven los correos invitados.
+4. **Accesos**: en Secrets, sección `[accesos]`, cada correo invitado -> su `id_empleado`.
+   Quien no tiene jefe en el organigrama ve todo; los demás ven solo su equipo hacia abajo
+   (ver `utils/acceso.py`). Un correo invitado que no esté en `[accesos]` ve "Sin acceso".
 
 El ETL no corre en la nube (SQL Server está en la red interna): sigue en la tarea programada de esta PC
 y el dashboard publicado lee de Supabase.

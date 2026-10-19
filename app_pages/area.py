@@ -1,7 +1,7 @@
 import streamlit as st
 
 from utils.config import AREAS_SIN_FUENTE
-from utils.data import cargar_datos, filtrar, periodo_anterior
+from utils.data import datos_visibles, filtrar, periodo_anterior
 from utils.metrics import delta, fmt_num, fmt_pct, kpis, resumen_por
 
 inicio, fin, areas, edificios = st.session_state.filtro
@@ -14,7 +14,7 @@ if area in AREAS_SIN_FUENTE:
             title="Sin fuente de datos", icon=":material/schedule:")
     st.stop()
 
-datos = cargar_datos()
+datos = datos_visibles()
 f = filtrar(datos, inicio, fin, [area], edificios)
 k = kpis(f)
 k0 = kpis(filtrar(datos, *periodo_anterior(inicio, fin), [area], edificios))
