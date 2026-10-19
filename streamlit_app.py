@@ -2,11 +2,15 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from utils.acceso import correo_actual, resolver_acceso
+from utils.acceso import cerrar_sesion, correo_actual, es_local, formulario_login, resolver_acceso
 from utils.config import AREAS_SIN_FUENTE
 from utils.data import EDIFICIOS_LISTA, cargar_datos, supabase_configurado
 
 st.set_page_config(page_title="Productividad por área", page_icon=":material/monitoring:", layout="wide")
+
+if correo_actual() is None and not es_local():
+    formulario_login()
+    st.stop()
 
 page = st.navigation(
     [
@@ -29,6 +33,8 @@ if acceso is None:
         title="Sin acceso",
         icon=":material/lock:",
     )
+    if st.session_state.get("correo_login"):
+        st.button("Cerrar sesión", icon=":material/logout:", on_click=cerrar_sesion)
     st.stop()
 
 hoy = date.today()
@@ -37,6 +43,8 @@ with st.sidebar:
         st.caption(f":material/account_circle: {acceso['nombre']} · {acceso['correo']}")
         if acceso["personas"] is not None:
             st.caption(f"Vista de tu equipo: {len(acceso['personas'])} personas")
+        if st.session_state.get("correo_login"):
+            st.button("Cerrar sesión", icon=":material/logout:", on_click=cerrar_sesion, width="stretch")
 
     st.header("Filtros")
     with st.container(horizontal=True):

@@ -4,8 +4,15 @@
 - Cualquier otra persona: ve su equipo completo hacia abajo (ella + quienes le reportan, recursivo).
 - Correo no registrado en Secrets [accesos]: sin acceso.
 - Corriendo en localhost sin login: ve todo (uso local del autor).
+
+Identidad: el correo de st.user si la plataforma lo da; si no (Streamlit Community Cloud no lo pasa),
+login propio con correo + contraseña. Las contraseñas viven en Secrets [usuarios] como hash PBKDF2
+(generar con `python -m tools.crear_usuario`).
 """
 
+import hashlib
+import hmac
+import time
 from urllib.parse import urlparse
 
 import pandas as pd
@@ -13,13 +20,75 @@ import streamlit as st
 
 from utils.config import AREAS
 
+ITERACIONES = 200_000
+MAX_INTENTOS = 5
+ESPERA_SEG = 60
+
+
+def hash_contrasena(contrasena: str, sal: bytes) -> str:
+    digest = hashlib.pbkdf2_hmac("sha256", contrasena.encode("utf-8"), sal, ITERACIONES)
+    return f"pbkdf2_sha256${ITERACIONES}${sal.hex()}${digest.hex()}"
+
+
+def verificar_contrasena(contrasena: str, guardado: str) -> bool:
+    try:
+        _, iteraciones, sal, esperado = guardado.split("$")
+        digest = hashlib.pbkdf2_hmac("sha256", contrasena.encode("utf-8"), bytes.fromhex(sal), int(iteraciones))
+        return hmac.compare_digest(digest.hex(), esperado)
+    except (ValueError, AttributeError):
+        return False
+
+
+def _usuarios() -> dict[str, str]:
+    try:
+        return {str(k).strip().lower(): str(v) for k, v in st.secrets.get("usuarios", {}).items()}
+    except Exception:
+        return {}
+
+
+def _correo_plataforma() -> str | None:
+    try:
+        return st.user.get("email")
+    except Exception:
+        return None
+
 
 def correo_actual() -> str | None:
-    try:
-        correo = st.user.get("email")
-    except Exception:
-        correo = None
+    correo = _correo_plataforma() or st.session_state.get("correo_login")
     return str(correo).strip().lower() if correo else None
+
+
+def formulario_login() -> None:
+    """Pide correo y contraseña; al validar guarda el correo en la sesión y recarga."""
+    _, centro, _ = st.columns([1, 2, 1])
+    with centro:
+        st.title("Productividad por área")
+        bloqueo = st.session_state.get("login_bloqueado_hasta", 0)
+        if time.time() < bloqueo:
+            st.error(f"Demasiados intentos. Espera {int(bloqueo - time.time())} segundos.", icon=":material/timer:")
+            return
+        with st.form("login", border=True):
+            correo = st.text_input("Correo", placeholder="nombre@econtactsol.com", autocomplete="username")
+            contrasena = st.text_input("Contraseña", type="password", autocomplete="current-password")
+            entrar = st.form_submit_button("Entrar", icon=":material/login:", type="primary", width="stretch")
+        if entrar:
+            correo = correo.strip().lower()
+            guardado = _usuarios().get(correo)
+            if guardado and verificar_contrasena(contrasena, guardado):
+                st.session_state.correo_login = correo
+                st.session_state.login_intentos = 0
+                st.rerun()
+            intentos = st.session_state.get("login_intentos", 0) + 1
+            st.session_state.login_intentos = intentos
+            if intentos >= MAX_INTENTOS:
+                st.session_state.login_bloqueado_hasta = time.time() + ESPERA_SEG
+                st.session_state.login_intentos = 0
+            st.error("Correo o contraseña incorrectos.", icon=":material/lock:")
+
+
+def cerrar_sesion() -> None:
+    st.session_state.pop("correo_login", None)
+    st.session_state.pop("acceso", None)
 
 
 def es_local() -> bool:

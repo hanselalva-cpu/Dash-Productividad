@@ -77,6 +77,8 @@ Sin `secrets.toml` los tickets salen en modo demo.
 4. **Accesos**: en Secrets, sección `[accesos]`, cada correo invitado -> su `id_empleado`.
    Quien no tiene jefe en el organigrama ve todo; los demás ven solo su equipo hacia abajo
    (ver `utils/acceso.py`). Un correo invitado que no esté en `[accesos]` ve "Sin acceso".
+5. **Contraseñas**: Community Cloud no pasa el correo del visitante, así que la app pide correo y contraseña.
+   `python -m tools.crear_usuario` genera la línea para la sección `[usuarios]` de Secrets (hash, no texto).
 
 El ETL no corre en la nube (SQL Server está en la red interna): sigue en la tarea programada de esta PC
 y el dashboard publicado lee de Supabase.
