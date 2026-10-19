@@ -1,7 +1,7 @@
 import streamlit as st
 
-from utils.data import datos_visibles, filtrar, periodo_anterior
-from utils.metrics import delta, fmt_num, fmt_pct, kpis, resumen_por
+from tablero.data import datos_visibles, filtrar, periodo_anterior
+from tablero.metrics import delta, fmt_num, fmt_pct, kpis, resumen_por
 
 inicio, fin, areas, edificios = st.session_state.filtro
 datos = datos_visibles()

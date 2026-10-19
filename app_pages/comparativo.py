@@ -1,9 +1,9 @@
 import pandas as pd
 import streamlit as st
 
-from utils.config import AREAS_SIN_FUENTE
-from utils.data import datos_visibles, filtrar, periodo_anterior
-from utils.metrics import resumen_por
+from tablero.config import AREAS_SIN_FUENTE
+from tablero.data import datos_visibles, filtrar, periodo_anterior
+from tablero.metrics import resumen_por
 
 inicio, fin, areas, edificios = st.session_state.filtro
 datos = datos_visibles()

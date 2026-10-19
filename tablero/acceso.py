@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 import pandas as pd
 import streamlit as st
 
-from utils.config import AREAS
+from tablero.config import AREAS
 
 ITERACIONES = 200_000
 MAX_INTENTOS = 5

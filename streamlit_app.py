@@ -2,9 +2,9 @@ from datetime import date, timedelta
 
 import streamlit as st
 
-from utils.acceso import cerrar_sesion, correo_actual, es_local, formulario_login, resolver_acceso
-from utils.config import AREAS_SIN_FUENTE
-from utils.data import EDIFICIOS_LISTA, cargar_datos, supabase_configurado
+from tablero.acceso import cerrar_sesion, correo_actual, es_local, formulario_login, resolver_acceso
+from tablero.config import AREAS_SIN_FUENTE
+from tablero.data import EDIFICIOS_LISTA, cargar_datos, supabase_configurado
 
 st.set_page_config(page_title="Productividad por área", page_icon=":material/monitoring:", layout="wide")
 

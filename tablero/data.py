@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from utils.config import (
+from tablero.config import (
     AREAS, AREAS_SIN_FUENTE, EDIFICIOS, ESTATUS_LABORABLE, SLA_DIAS, SLA_DIAS_DEFAULT, SUBAREAS_POR_AREA,
     TOLERANCIA_RETARDO_MIN,
 )
@@ -396,8 +396,8 @@ def _demo_asistencia(col: pd.DataFrame, rng: np.random.Generator) -> pd.DataFram
 
 
 def datos_visibles() -> dict:
-    """Datos recortados a lo que puede ver el usuario actual (ver utils/acceso.py). Usar en todas las páginas."""
-    from utils.acceso import restringir
+    """Datos recortados a lo que puede ver el usuario actual (ver tablero/acceso.py). Usar en todas las páginas."""
+    from tablero.acceso import restringir
 
     acceso = st.session_state.get("acceso")
     if not acceso:

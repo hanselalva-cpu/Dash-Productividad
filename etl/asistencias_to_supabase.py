@@ -17,7 +17,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from etl.servicedesk_to_supabase import LOTE_UPSERT, _ejecutar, _meses, cliente_supabase, conectar_sql
-from utils.config import ESTATUS_INCIDENCIA, TOLERANCIA_RETARDO_MIN
+from tablero.config import ESTATUS_INCIDENCIA, TOLERANCIA_RETARDO_MIN
 
 BASE = "REPORTES_INCIDENCIAS"
 SQL = "SET NOCOUNT ON; EXEC dbo.OBTENER_INFORME_EVENTOS @FECHA_INICIO=?, @FECHA_FIN=?"

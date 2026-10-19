@@ -1,7 +1,7 @@
 import streamlit as st
 
-from utils.metrics import resumen_por
-from utils.data import datos_visibles, filtrar
+from tablero.metrics import resumen_por
+from tablero.data import datos_visibles, filtrar
 
 inicio, fin, areas, edificios = st.session_state.filtro
 datos = datos_visibles()

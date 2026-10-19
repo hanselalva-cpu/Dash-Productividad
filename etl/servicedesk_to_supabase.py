@@ -21,7 +21,7 @@ import pandas as pd
 import pyodbc
 from dotenv import load_dotenv
 
-from utils.config import EDIFICIOS, SUBAREAS_POR_AREA
+from tablero.config import EDIFICIOS, SUBAREAS_POR_AREA
 
 DIAS_VENTANA_INCREMENTAL = 60
 LOTE_UPSERT = 500

@@ -9,7 +9,7 @@ El correo también debe estar en [accesos] con su id_empleado.
 import getpass
 import os
 
-from utils.acceso import hash_contrasena
+from tablero.acceso import hash_contrasena
 
 
 def main() -> None:

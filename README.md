@@ -17,7 +17,7 @@ SQL Server ServiceDesk ──ETL──▶ Supabase ──▶ Streamlit
 | Asistencias, retardos, vacaciones | REPORTES_INCIDENCIAS.dbo.OBTENER_INFORME_EVENTOS → tabla `asistencias` (`python -m etl.asistencias_to_supabase`) | Listo |
 | Proyectos | Por definir | Demo |
 
-Mapeo de áreas a subáreas de ServiceDesk, edificios y metas de SLA: `utils/config.py`.
+Mapeo de áreas a subáreas de ServiceDesk, edificios y metas de SLA: `tablero/config.py`.
 
 ## Instalación
 
@@ -76,7 +76,7 @@ Sin `secrets.toml` los tickets salen en modo demo.
 3. **Share**: el repo es privado, así que la app solo la ven los correos invitados.
 4. **Accesos**: en Secrets, sección `[accesos]`, cada correo invitado -> su `id_empleado`.
    Quien no tiene jefe en el organigrama ve todo; los demás ven solo su equipo hacia abajo
-   (ver `utils/acceso.py`). Un correo invitado que no esté en `[accesos]` ve "Sin acceso".
+   (ver `tablero/acceso.py`). Un correo invitado que no esté en `[accesos]` ve "Sin acceso".
 5. **Contraseñas**: Community Cloud no pasa el correo del visitante, así que la app pide correo y contraseña.
    `python -m tools.crear_usuario` genera la línea para la sección `[usuarios]` de Secrets (hash, no texto).
 

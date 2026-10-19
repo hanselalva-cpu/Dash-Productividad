@@ -4,10 +4,10 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from utils.calendario import MESES, calendario_html, colores_por_area
-from utils.config import AREAS, TOLERANCIA_RETARDO_MIN
-from utils.data import datos_visibles, filtrar, periodo_anterior
-from utils.metrics import delta, fmt_num, fmt_pct, kpis
+from tablero.calendario import MESES, calendario_html, colores_por_area
+from tablero.config import AREAS, TOLERANCIA_RETARDO_MIN
+from tablero.data import datos_visibles, filtrar, periodo_anterior
+from tablero.metrics import delta, fmt_num, fmt_pct, kpis
 
 inicio, fin, areas, edificios = st.session_state.filtro
 datos = datos_visibles()

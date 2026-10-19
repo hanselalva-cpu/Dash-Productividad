@@ -1,4 +1,4 @@
-"""Cálculo de KPIs sobre datos ya filtrados (ver utils.data.filtrar)."""
+"""Cálculo de KPIs sobre datos ya filtrados (ver tablero.data.filtrar)."""
 
 import numpy as np
 import pandas as pd
