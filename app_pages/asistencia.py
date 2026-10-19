@@ -60,9 +60,13 @@ with st.container(border=True):
         .reset_index()
     )
     por_persona["pct_asistencia"] = por_persona["presentes"] / por_persona["laborables"].where(por_persona["laborables"] > 0)
-    st.dataframe(
-        por_persona.sort_values(["retardos", "faltas"], ascending=False),
+    por_persona = por_persona.sort_values(["retardos", "faltas"], ascending=False).reset_index(drop=True)
+    seleccion = st.dataframe(
+        por_persona,
         hide_index=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key="asistencia_persona",
         column_order=["colaborador", "area", "pct_asistencia", "laborables", "retardos", "minutos", "faltas",
                       "vacaciones", "incapacidad", "sin_salida"],
         column_config={
@@ -79,6 +83,61 @@ with st.container(border=True):
         },
         alt="Asistencia, retardos y faltas por colaborador",
     )
+    st.caption("Selecciona una fila para ver el detalle día por día de esa persona.")
+
+DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+TIPOS = {
+    "Faltas": a["estatus"] == "falta",
+    "Retardos": a["retardo"],
+    "Incapacidades": a["estatus"] == "incapacidad",
+    "Vacaciones": a["estatus"] == "vacaciones",
+    "Sin checada de salida": a["sin_salida"],
+}
+with st.container(border=True):
+    st.subheader("Detalle por día")
+    filas_sel = seleccion.selection.rows
+    persona = por_persona.loc[filas_sel[0], "colaborador"] if filas_sel else None
+    with st.container(horizontal=True, vertical_alignment="center"):
+        tipos = st.pills("Tipo", list(TIPOS), default=["Faltas"], selection_mode="multi", key="detalle_tipo")
+        if persona:
+            st.badge(f"Persona: {persona}", icon=":material/person:", color="blue")
+    if not tipos:
+        st.info("Elige al menos un tipo.", icon=":material/filter_alt:")
+    else:
+        mascara = pd.concat([TIPOS[t] for t in tipos], axis=1).any(axis=1)
+        detalle = a[mascara]
+        if persona:
+            detalle = detalle[detalle["colaborador"] == persona]
+        nombres_tipo = {t: m for t, m in TIPOS.items() if t in tipos}
+        detalle = detalle.assign(
+            tipo=lambda df: df.index.to_series().map(
+                lambda i: ", ".join(t for t, m in nombres_tipo.items() if m.get(i, False))
+            )
+        )
+        detalle = detalle.assign(dia=detalle["fecha"].dt.dayofweek.map(dict(enumerate(DIAS_SEMANA))))
+        st.caption(f"{len(detalle)} día{'s' if len(detalle) != 1 else ''}")
+        st.dataframe(
+            detalle.sort_values(["fecha", "colaborador"], ascending=[False, True])[
+                ["fecha", "dia", "colaborador", "area", "tipo", "incidencia", "descripcion", "inicio_jornada", "entrada",
+                 "salida", "minutos_tarde", "comentario"]
+            ],
+            hide_index=True,
+            column_config={
+                "fecha": st.column_config.DateColumn("Fecha", format="DD/MM/YYYY"),
+                "dia": "Día",
+                "colaborador": "Colaborador",
+                "area": "Área",
+                "tipo": "Tipo",
+                "incidencia": "Código",
+                "descripcion": "Descripción",
+                "inicio_jornada": "Inicio jornada",
+                "entrada": "Entrada",
+                "salida": "Salida",
+                "minutos_tarde": st.column_config.NumberColumn("Min. tarde", format="%.0f"),
+                "comentario": "Comentario",
+            },
+            alt="Detalle día por día de faltas, retardos, incapacidades y vacaciones",
+        )
 
 with st.container(border=True):
     st.subheader("Validación de checadas")

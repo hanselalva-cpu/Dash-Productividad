@@ -25,7 +25,7 @@ COLUMNAS_TICKETS = [
 ]
 COLUMNAS_ASISTENCIAS = [
     "id_empleado", "fecha", "incidencia", "descripcion", "estatus", "inicio_jornada", "entrada", "salida",
-    "minutos_tarde", "retardo", "sin_entrada", "sin_salida", "sin_horario",
+    "minutos_tarde", "retardo", "sin_entrada", "sin_salida", "sin_horario", "comentario",
 ]
 
 
