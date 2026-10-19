@@ -1,0 +1,2 @@
+id_empleado,nombre,grupo,area,reporta_a,incluir
+E000001,APELLIDO APELLIDO NOMBRE,SOPORTE TECNICO,Soporte,E000002,Sí

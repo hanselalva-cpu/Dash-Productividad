@@ -1,0 +1,16 @@
+# Entorno
+.venv/
+__pycache__/
+*.pyc
+
+# Credenciales (nunca subir)
+.env
+.streamlit/secrets.toml
+
+# Datos de personal y salidas locales
+data/personal.csv
+entregables/
+logs/
+*.csv
+*.parquet
+!data/personal.example.csv

@@ -1,0 +1,5 @@
+# Dashboard (Streamlit Community Cloud instala este archivo)
+streamlit>=1.57
+supabase>=2.0
+pandas>=2.2
+numpy>=1.26

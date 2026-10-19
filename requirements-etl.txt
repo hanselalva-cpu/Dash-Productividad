@@ -1,0 +1,4 @@
+# ETL local: SQL Server -> Supabase (requiere ODBC Driver 17 for SQL Server)
+-r requirements.txt
+pyodbc>=5.0
+python-dotenv>=1.0
