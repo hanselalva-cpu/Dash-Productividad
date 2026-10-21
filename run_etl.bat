@@ -1,5 +1,5 @@
 @echo off
-REM ETL diario a Supabase (Programador de tareas: "Dash Productividad - ETL ServiceDesk", 10:00).
+REM ETL a Supabase (Programador de tareas: "Dash Productividad - ETL ServiceDesk", 10, 12, 16 y 18 h).
 cd /d "%~dp0"
 if not exist logs mkdir logs
 set PYTHONIOENCODING=utf-8

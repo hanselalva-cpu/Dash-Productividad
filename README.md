@@ -48,7 +48,7 @@ Ninguno de esos archivos se sube a git.
 - Los SPs reciben `@Edificio` y `@Subarea` como **IDs**; NULL no significa "todos". El ETL recorre edificio × subárea.
 - Incremental: últimos 60 días + abiertos actuales + los meses de tickets viejos que estaban abiertos en Supabase y ya se cerraron. Upsert por `ticket_id`.
 - Cada corrida queda en la tabla `etl_ejecuciones`; el dashboard muestra la última.
-- Programado diario 10:00 en el Programador de tareas de Windows: tarea "Dash Productividad - ETL ServiceDesk" -> `run_etl.bat` (log en `logs/etl.log`). Requiere esta PC encendida y en red.
+- Programado diario 10:00, 12:00, 16:00 y 18:00 en el Programador de tareas de Windows: tarea "Dash Productividad - ETL ServiceDesk" -> `run_etl.bat` (log en `logs/etl.log`). Requiere esta PC encendida y en red.
 
 ## Dashboard
 
