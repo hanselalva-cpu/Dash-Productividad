@@ -4,9 +4,82 @@ import streamlit as st
 from tablero.config import AREAS_SIN_FUENTE
 from tablero.data import datos_visibles, filtrar, periodo_anterior
 from tablero.metrics import resumen_por
+from tablero.persona import INDICADORES_PERSONA, años_disponibles, mensual, totales
 
 inicio, fin, areas, edificios = st.session_state.filtro
 datos = datos_visibles()
+
+modo = st.segmented_control("Comparar", ["Áreas", "Personas"], default="Áreas", required=True, key="comparativo_modo")
+
+if modo == "Personas":
+    col_p = datos["colaboradores"].sort_values("nombre")
+    etiquetas = {r.id: f"{r.nombre} · {r.area}" for r in col_p.itertuples()}
+    with st.container(horizontal=True, vertical_alignment="bottom"):
+        elegidos = st.multiselect("Personas", list(etiquetas), format_func=etiquetas.get, max_selections=6,
+                                  placeholder="Elige 2 o más personas", key="comparativo_personas")
+        año = st.selectbox("Año", años_disponibles(datos), key="comparativo_año", width=120)
+    st.caption("Año completo de cada persona; no aplica el periodo ni las áreas de la barra lateral.")
+    if len(elegidos) < 2:
+        st.info("Elige al menos 2 personas para compararlas.", icon=":material/group_add:")
+        st.stop()
+
+    m = mensual(datos, elegidos, año)
+    tot = totales(m).set_index("colaborador")
+
+    with st.container(border=True):
+        st.subheader(f"Año completo · {año}")
+        st.dataframe(
+            tot,
+            column_order=["cerrados", "pct_sla", "dias_resolucion", "pct_asistencia", "retardos", "faltas",
+                          "vacaciones", "meses_con_vacaciones"],
+            column_config={
+                "_index": st.column_config.TextColumn("Persona"),
+                "cerrados": st.column_config.NumberColumn("Cerrados"),
+                "pct_sla": st.column_config.ProgressColumn("SLA", format="percent", min_value=0, max_value=1),
+                "dias_resolucion": st.column_config.NumberColumn("Resolución (días)", format="%.1f"),
+                "pct_asistencia": st.column_config.ProgressColumn("Asistencia", format="percent", min_value=0,
+                                                                  max_value=1),
+                "retardos": st.column_config.NumberColumn("Retardos"),
+                "faltas": st.column_config.NumberColumn("Faltas"),
+                "vacaciones": st.column_config.NumberColumn("Días vacaciones"),
+                "meses_con_vacaciones": st.column_config.TextColumn("Meses con vacaciones (días)", width="large"),
+            },
+            alt=f"Comparativo anual {año} de las personas elegidas",
+        )
+        mejores = []
+        for nombre, (c, _, mayor_mejor) in INDICADORES_PERSONA.items():
+            serie = tot[c].dropna()
+            if mayor_mejor is None or serie.empty or serie.nunique() == 1:
+                continue
+            mejores.append(f"**{nombre}:** {serie.idxmax() if mayor_mejor else serie.idxmin()}")
+        if mejores:
+            st.markdown("Mejor en cada indicador — " + " · ".join(mejores))
+
+    indicador_p = st.pills("Indicador", list(INDICADORES_PERSONA), default="Tickets cerrados", selection_mode="single",
+                           key="comparativo_indicador_persona") or "Tickets cerrados"
+    c, fmt_p, _ = INDICADORES_PERSONA[indicador_p]
+    escala_p = 100 if fmt_p == "percent" else 1
+    sufijo = " (%)" if fmt_p == "percent" else ""
+
+    c1, c2 = st.columns([3, 2])
+    with c1:
+        with st.container(border=True, height="stretch"):
+            st.subheader(f"{indicador_p} por mes")
+            st.line_chart(m.assign(valor=m[c] * escala_p), x="mes_fecha", y="valor", color="colaborador",
+                          x_label="", y_label=f"{indicador_p}{sufijo}",
+                          alt=f"{indicador_p} por mes de las personas elegidas")
+    with c2:
+        with st.container(border=True, height="stretch"):
+            st.subheader("Mes por mes")
+            tabla_mes = m.pivot_table(index=["mes", "mes_nombre"], columns="colaborador", values=c, aggfunc="first")
+            tabla_mes = tabla_mes.reset_index(level="mes", drop=True)
+            st.dataframe(
+                tabla_mes,
+                column_config={"_index": st.column_config.TextColumn("Mes"),
+                               **{p: st.column_config.NumberColumn(p, format=fmt_p) for p in tabla_mes.columns}},
+                alt=f"{indicador_p} mes por mes de las personas elegidas",
+            )
+    st.stop()
 f = filtrar(datos, inicio, fin, areas, edificios)
 f0 = filtrar(datos, *periodo_anterior(inicio, fin), areas, edificios)
 

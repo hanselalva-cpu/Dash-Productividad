@@ -15,9 +15,10 @@ if correo_actual() is None and not es_local():
 page = st.navigation(
     [
         st.Page("app_pages/resumen.py", title="Resumen general", icon=":material/dashboard:"),
-        st.Page("app_pages/comparativo.py", title="Comparativo de áreas", icon=":material/compare_arrows:"),
+        st.Page("app_pages/comparativo.py", title="Comparativo", icon=":material/compare_arrows:"),
         st.Page("app_pages/area.py", title="Detalle por área", icon=":material/lan:"),
         st.Page("app_pages/personas.py", title="Personas", icon=":material/group:"),
+        st.Page("app_pages/ficha.py", title="Ficha de persona", icon=":material/badge:"),
         st.Page("app_pages/asistencia.py", title="Asistencia y vacaciones", icon=":material/event_available:"),
     ],
     position="top",
