@@ -6,6 +6,7 @@ import streamlit as st
 
 from tablero.data import datos_visibles
 from tablero.metrics import fmt_num, fmt_pct
+from tablero.persona import MESES
 from tablero.proyectos import ESTADOS_ACTIVOS, ESTADOS_PROYECTO, ROLES_PROYECTO, UMBRAL_ALTO, UMBRAL_MEDIO
 
 COLOR_ESTADO = {"En desarrollo": "#1D4ED8", "En pruebas": "#0EA5E9", "En espera": "#D97706", "Terminado": "#059669",
@@ -100,7 +101,7 @@ with st.container(border=True):
 
 with st.container(border=True):
     st.subheader("Cronograma (Gantt)")
-    vista = st.segmented_control("Mostrar", ["En marcha y en espera", "Todos"], default="En marcha y en espera",
+    vista = st.segmented_control("Mostrar", ["Todos", "En marcha y en espera"], default="Todos",
                                  required=True, key="proy_gantt")
     g = p[p["inicio"].notna()].copy()
     if vista != "Todos":
@@ -110,8 +111,26 @@ with st.container(border=True):
     g["fin_graf"] = g["fin"].fillna(pd.Series(hoy, index=g.index).where(g["inicio"] < hoy, g["inicio"] + pd.Timedelta(days=7)))
     g["avance_fin"] = g["inicio"] + (g["fin_graf"] - g["inicio"]) * g["avance"]
     g["periodo"] = g["inicio"].dt.strftime("%d/%m/%Y") + " → " + g["fin"].dt.strftime("%d/%m/%Y").fillna("sin fecha de cierre")
+
+    # Rango de meses: proyectos que corren (total o parcialmente) en esos meses
+    dominio = None
+    if not g.empty:
+        meses = list(pd.period_range(min(g["inicio"].min(), hoy), max(g["fin_graf"].max(), hoy), freq="M"))
+        mes_actual = hoy.to_period("M")
+        rango = st.select_slider(
+            "Meses", options=meses, value=(mes_actual, mes_actual), key="proy_meses",
+            format_func=lambda m: f"{MESES[m.month][:3]} {m.year}",
+            help="Muestra los proyectos que están en curso en algún día de esos meses",
+        )
+        desde, hasta = rango[0].start_time, rango[1].end_time.normalize() + pd.Timedelta(days=1)
+        g = g[(g["inicio"] < hasta) & (g["fin_graf"] >= desde)]
+        dominio = [desde, hasta]
+        nombre_rango = (f"{MESES[rango[0].month]} {rango[0].year}" if rango[0] == rango[1]
+                        else f"{MESES[rango[0].month]} {rango[0].year} – {MESES[rango[1].month]} {rango[1].year}")
+        st.caption(f"{len(g)} proyecto{'s' if len(g) != 1 else ''} en curso en {nombre_rango}")
+
     if g.empty:
-        st.caption("Sin proyectos con fecha de inicio.")
+        st.caption("Sin proyectos en ese periodo.")
     else:
         orden_g = g.sort_values(["inicio", "fin_graf"])["proyecto"].tolist()
         base = alt.Chart(g).encode(
@@ -120,17 +139,19 @@ with st.container(border=True):
                      alt.Tooltip("avance:Q", title="Avance", format=".0%"), alt.Tooltip("periodo:N", title="Fechas"),
                      alt.Tooltip("desarrollo:N", title="Desarrollo"), alt.Tooltip("semaforo:N", title="Semáforo")],
         )
-        plan = base.mark_bar(opacity=0.25, cornerRadius=3).encode(
-            x=alt.X("inicio:T", title=None, axis=alt.Axis(format="%b %Y")), x2="fin_graf:T",
+        plan = base.mark_bar(opacity=0.25, cornerRadius=3, clip=True).encode(
+            x=alt.X("inicio:T", title=None, axis=alt.Axis(format="%d %b"), scale=alt.Scale(domain=dominio)),
+            x2="fin_graf:T",
             color=alt.Color("estado:N", scale=ESCALA_ESTADO, title="Etapa"),
             strokeDash=alt.condition("datum.sin_fin", alt.value([4, 3]), alt.value([0, 0])),
             stroke=alt.Color("estado:N", scale=ESCALA_ESTADO, legend=None),
         )
-        hecho = base.mark_bar(cornerRadius=3).encode(x="inicio:T", x2="avance_fin:T",
+        hecho = base.mark_bar(cornerRadius=3, clip=True).encode(x="inicio:T", x2="avance_fin:T",
                                                      color=alt.Color("estado:N", scale=ESCALA_ESTADO, legend=None))
-        etiqueta = base.mark_text(align="left", dx=4, fontSize=11).encode(x="fin_graf:T",
+        etiqueta = base.mark_text(align="left", dx=4, fontSize=11, clip=True).encode(x="fin_graf:T",
                                                                           text=alt.Text("avance:Q", format=".0%"))
-        corte = alt.Chart(pd.DataFrame({"hoy": [hoy]})).mark_rule(strokeDash=[4, 3], color="#64748B").encode(x="hoy:T")
+        corte = alt.Chart(pd.DataFrame({"hoy": [hoy]})).mark_rule(strokeDash=[4, 3], color="#64748B",
+                                                                  clip=True).encode(x="hoy:T")
         st.altair_chart((plan + hecho + etiqueta + corte).properties(height=max(200, 26 * len(g))),
                         alt="Diagrama de Gantt de los proyectos: inicio a cierre y avance")
         st.caption("Parte sólida: avance. Barras con borde punteado: sin fecha de cierre (se dibujan hasta hoy). "
