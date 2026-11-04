@@ -9,8 +9,10 @@ __pycache__/
 
 # Datos de personal y salidas locales
 data/personal.csv
+data/proyectos/
 entregables/
 logs/
 *.csv
 *.parquet
 !data/personal.example.csv
+!data/alias_personas.example.csv

@@ -15,7 +15,7 @@ SQL Server ServiceDesk ──ETL──▶ Supabase ──▶ Streamlit
 | Personal oficial | `data/personal.csv` → tabla `personal` (`python -m etl.cargar_personal`) | Listo; falta línea de reporte |
 | PMS | Fisgón | Pendiente |
 | Asistencias, retardos, vacaciones | REPORTES_INCIDENCIAS.dbo.OBTENER_INFORME_EVENTOS → tabla `asistencias` (`python -m etl.asistencias_to_supabase`) | Listo |
-| Proyectos | Por definir | Demo |
+| Proyectos | Concentrados Excel de las PMs (`data/proyectos/`) → tablas `proyectos` y `proyecto_asignaciones` (`python -m etl.proyectos_to_supabase`) | Listo |
 
 Mapeo de áreas a subáreas de ServiceDesk, edificios y metas de SLA: `tablero/config.py`.
 
@@ -67,6 +67,7 @@ Sin `secrets.toml` los tickets salen en modo demo.
 - **Backlog**: tickets abiertos hoy, sin importar el periodo.
 - **Retardo**: entrada > `InicioJornada` + 15 min (el SP marca R desde el primer minuto; se recalcula).
 - **% Asistencia**: días laborados (A/R/TC) ÷ días laborables (sin descansos, vacaciones ni incapacidades).
+- **Proyectos**: semáforo = avance contra avance esperado (días transcurridos ÷ días planeados). Atención alta: vencido o 30 pts+ abajo; media: 15–30 pts. Responsables homologados con `data/alias_personas.csv` (no se sube a git). El área de un proyecto son las áreas de sus responsables; PMS cuenta todo su portafolio.
 - **Validación de checadas**: días laborados sin entrada, sin salida, sin horario o con una sola checada.
 
 ## Publicación (Streamlit Community Cloud)

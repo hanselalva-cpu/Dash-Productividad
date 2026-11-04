@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 from tablero.data import datos_visibles
@@ -35,6 +36,31 @@ st.caption(
     + (f" · Reporta a {info['reporta_a']}" if info.get("reporta_a") else "")
     + f" · Vacaciones en {año}: {tot['meses_con_vacaciones']}"
 )
+
+proy_persona = datos["asignaciones"][datos["asignaciones"]["id_empleado"] == persona]
+portafolio = datos["proyectos_todos"][datos["proyectos_todos"]["portafolio_id"] == persona]
+if not portafolio.empty:  # PM: su portafolio completo
+    proy_persona = pd.concat([proy_persona, portafolio.assign(rol="PM (portafolio)")[
+        ["proyecto_id", "proyecto", "rol", "estado", "activo", "semaforo", "avance"]]])
+if not proy_persona.empty:
+    with st.container(border=True):
+        en_marcha = proy_persona.drop_duplicates("proyecto_id")["activo"].sum()
+        st.subheader(f"Proyectos · {en_marcha} en marcha de {proy_persona['proyecto_id'].nunique()}")
+        st.dataframe(
+            proy_persona.merge(datos["proyectos_todos"][["proyecto_id", "fin"]], on="proyecto_id", how="left")
+            .sort_values(["activo", "avance"], ascending=[False, True]),
+            hide_index=True,
+            column_order=["proyecto", "rol", "estado", "semaforo", "avance", "fin"],
+            column_config={
+                "proyecto": "Proyecto",
+                "rol": "Función",
+                "estado": "Etapa",
+                "semaforo": "Semáforo",
+                "avance": st.column_config.ProgressColumn("Avance", format="percent", min_value=0, max_value=1),
+                "fin": st.column_config.DateColumn("Cierre", format="DD/MM/YYYY"),
+            },
+            alt=f"Proyectos de {info['nombre']}",
+        )
 
 c1, c2 = st.columns(2)
 with c1:

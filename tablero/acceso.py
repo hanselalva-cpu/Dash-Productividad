@@ -145,7 +145,21 @@ def restringir(d: dict, personas: set[str] | None, areas: list[str]) -> dict:
         "colaboradores": d["colaboradores"][d["colaboradores"]["id"].isin(personas)],
         # Tickets de sus áreas resueltos por su equipo, más los aún sin asignar
         "tickets": t[t["area"].isin(areas) & (t["colaborador_id"].isin(personas) | t["colaborador_id"].isna())],
-        "proyectos": d["proyectos"][d["proyectos"]["area"].isin(areas)],
+        **_proyectos_visibles(d, personas, areas),
         "asistencias": d["asistencias"][d["asistencias"]["colaborador_id"].isin(personas)],
         "vacaciones": d["vacaciones"][d["vacaciones"]["colaborador_id"].isin(personas)],
+    }
+
+
+def _proyectos_visibles(d: dict, personas: set[str], areas: list[str]) -> dict:
+    """Proyectos donde participa alguien de su equipo (con todos sus responsables)."""
+    a = d["asignaciones"]
+    p = d["proyectos_todos"]
+    visibles = set(a.loc[a["id_empleado"].isin(personas), "proyecto_id"])
+    visibles |= set(p.loc[p["portafolio_id"].isin(personas), "proyecto_id"])  # la PM ve todo su portafolio
+    pa = d["proyectos_area"]
+    return {
+        "proyectos_todos": d["proyectos_todos"][d["proyectos_todos"]["proyecto_id"].isin(visibles)],
+        "asignaciones": a[a["proyecto_id"].isin(visibles)],
+        "proyectos_area": pa[pa["proyecto_id"].isin(visibles) & pa["area"].isin(areas)],
     }

@@ -3,7 +3,7 @@
 AREAS = ["Desarrollo", "Eficiencia", "Soporte", "Base de datos", "Gestor de claves", "PMS"]
 
 # Áreas sin datos en ServiceDesk todavía (PMS usará Fisgón).
-AREAS_SIN_FUENTE = {"PMS": "Fisgón (pendiente de integrar)"}
+AREAS_SIN_FUENTE = {"PMS": "Fisgón (pendiente de integrar)"}  # sin tickets; sus proyectos sí están
 
 # dbo.Edificio en ServiceDesk
 EDIFICIOS = {1: "Cantarranas", 2: "Piramide", 3: "Plaza Guadalupe", 4: "Plaza Sur", 5: "Edificio Reforma"}

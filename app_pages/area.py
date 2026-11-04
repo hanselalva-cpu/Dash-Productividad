@@ -10,9 +10,7 @@ if area not in areas:
     area = areas[0]
 
 if area in AREAS_SIN_FUENTE:
-    st.info(f"{area} no usa ServiceDesk. Sus datos vendrán de {AREAS_SIN_FUENTE[area]}.",
-            title="Sin fuente de datos", icon=":material/schedule:")
-    st.stop()
+    st.info(f"{area} no usa ServiceDesk: sin tickets. Pendiente: {AREAS_SIN_FUENTE[area]}.", icon=":material/schedule:")
 
 datos = datos_visibles()
 f = filtrar(datos, inicio, fin, [area], edificios)
@@ -119,22 +117,27 @@ with col3:
         )
 with col4:
     with st.container(border=True):
-        st.subheader("Proyectos (demo)")
-        proyectos = f["proyectos"].assign(
-            avance_real=lambda df: df["avance_real"] / 100, avance_plan=lambda df: df["avance_plan"] / 100
-        )
-        st.dataframe(
-            proyectos[["nombre", "responsable", "estado", "fecha_fin_plan", "avance_plan", "avance_real", "retrasado"]],
-            hide_index=True,
-            height=350,
-            column_config={
-                "nombre": "Proyecto",
-                "responsable": "Responsable",
-                "estado": "Estado",
-                "fecha_fin_plan": st.column_config.DateColumn("Fin plan", format="DD/MM/YYYY"),
-                "avance_plan": st.column_config.ProgressColumn("Plan", format="percent", min_value=0, max_value=1),
-                "avance_real": st.column_config.ProgressColumn("Real", format="percent", min_value=0, max_value=1),
-                "retrasado": st.column_config.CheckboxColumn("Retrasado"),
-            },
-            alt=f"Proyectos del área {area}",
-        )
+        st.subheader("Proyectos en marcha")
+        proyectos = datos["proyectos_area"]
+        proyectos = proyectos[(proyectos["area"] == area) & proyectos["activo"]]
+        if proyectos.empty:
+            st.caption("Sin proyectos en marcha con personas de esta área.")
+        else:
+            st.dataframe(
+                proyectos.sort_values("brecha")[["proyecto", "estado", "semaforo", "avance", "esperado", "fin",
+                                                 "desarrollo", "base_datos"]],
+                hide_index=True,
+                height=350,
+                column_config={
+                    "proyecto": "Proyecto",
+                    "estado": "Etapa",
+                    "semaforo": "Semáforo",
+                    "avance": st.column_config.ProgressColumn("Avance", format="percent", min_value=0, max_value=1),
+                    "esperado": st.column_config.ProgressColumn("Esperado", format="percent", min_value=0,
+                                                                max_value=1),
+                    "fin": st.column_config.DateColumn("Cierre", format="DD/MM/YYYY"),
+                    "desarrollo": "Desarrollo",
+                    "base_datos": "Base de datos",
+                },
+                alt=f"Proyectos en marcha del área {area}",
+            )

@@ -3,9 +3,11 @@
 - Tickets: tabla `tickets` de Supabase (copia de ServiceDesk, ver etl/). Sin credenciales: demo.
 - Asistencias y vacaciones: tabla `asistencias` (copia de REPORTES_INCIDENCIAS). Sin datos: demo.
 - Personal: tabla `personal` o data/personal.csv.
-- Proyectos: aún sin fuente (demo).
+- Proyectos: tablas `proyectos` / `proyecto_asignaciones` (concentrados de las PMs); si no existen,
+  los Excel locales de data/proyectos/ (ver tablero/proyectos.py).
 """
 
+import os
 from datetime import date, timedelta
 
 import numpy as np
@@ -16,6 +18,7 @@ from tablero.config import (
     AREAS, AREAS_SIN_FUENTE, EDIFICIOS, ESTATUS_LABORABLE, SLA_DIAS, SLA_DIAS_DEFAULT, SUBAREAS_POR_AREA,
     TOLERANCIA_RETARDO_MIN,
 )
+from tablero import proyectos as proy
 
 EDIFICIOS_LISTA = list(EDIFICIOS.values())
 
@@ -100,12 +103,15 @@ def cargar_datos() -> dict:
     if asistencias is None or asistencias.empty:
         asistencias, fuente_asistencia = _demo_asistencia(colaboradores, rng), "Demo"
 
+    proyectos, asignaciones, fuente_proyectos = _leer_proyectos()
+
     d = {
         "tickets": t,
         "colaboradores": colaboradores,
-        "proyectos": _preparar_proyectos(_demo_proyectos(colaboradores, rng)),
+        **proy.preparar(proyectos, asignaciones, colaboradores),
         **_preparar_asistencia(colaboradores, asistencias),
-        "fuentes": {**fuentes, "personal": fuente_personal, "asistencia": fuente_asistencia, "proyectos": "Demo"},
+        "fuentes": {**fuentes, "personal": fuente_personal, "asistencia": fuente_asistencia,
+                    "proyectos": fuente_proyectos},
         "etl": etl,
     }
     return d
@@ -186,18 +192,23 @@ def _colaboradores_desde_tickets(t: pd.DataFrame, rng: np.random.Generator) -> p
     return col.reset_index(drop=True)
 
 
-def _preparar_proyectos(p: pd.DataFrame) -> pd.DataFrame:
-    for c in ["fecha_inicio", "fecha_fin_plan", "fecha_fin_real"]:
-        p[c] = pd.to_datetime(p[c], errors="coerce")
-    hoy = pd.Timestamp(date.today())
-    completado = p["estado"] == "completado"
-    p["retrasado"] = (
-        (completado & (p["fecha_fin_real"] > p["fecha_fin_plan"]))
-        | (~completado & (hoy > p["fecha_fin_plan"]))
-        | ((p["estado"] == "en_curso") & (p["avance_real"] < p["avance_plan"] - 10))
-        | (p["estado"] == "detenido")
-    )
-    return p
+def _leer_proyectos() -> tuple[pd.DataFrame, pd.DataFrame, str]:
+    if supabase_configurado():
+        try:
+            p = _leer_tabla("proyectos", proy.COLUMNAS_PROYECTOS)
+            a = _leer_tabla("proyecto_asignaciones", proy.COLUMNAS_ASIGNACIONES,
+                            orden=["proyecto_id", "persona", "rol"])
+            if not p.empty:
+                return p, a, "Supabase (concentrados PMs)"
+        except Exception:
+            pass
+    try:  # sin tablas en Supabase: los Excel locales (solo en la PC que los tiene)
+        from etl.proyectos_to_supabase import leer_todo
+
+        p, a = leer_todo(os.environ.get("PROYECTOS_DIR", "data/proyectos"))
+        return p, a, "Excel local (data/proyectos)"
+    except Exception:
+        return (*proy.vacios(), "Sin datos")
 
 
 def _preparar_asistencia(col: pd.DataFrame, crudo: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -254,7 +265,7 @@ def filtrar(d: dict, inicio: date, fin: date, areas: list[str], edificios: list[
     t = en_area(d["tickets"])
     if edificios is not None:
         t = t[t["edificio"].isin(edificios)]
-    p = en_area(d["proyectos"])
+    p = en_area(d["proyectos_area"])
     a = en_area(d["asistencias"])
     v = en_area(d["vacaciones"])
 
@@ -262,7 +273,8 @@ def filtrar(d: dict, inicio: date, fin: date, areas: list[str], edificios: list[
         "colaboradores": en_area(d["colaboradores"]),
         "tickets": t[(t["fecha_creacion"] >= ini) & (t["fecha_creacion"] < fin_ts)],
         "backlog": t[t["estado"] == "abierto"],
-        "proyectos": p[(p["fecha_inicio"] < fin_ts) & (p["fecha_fin_plan"].fillna(p["fecha_inicio"]) >= ini)],
+        # Foto actual del portafolio (no depende del periodo): proyectos en marcha por área
+        "proyectos": p[p["activo"]],
         "asistencias": a[(a["fecha"] >= ini) & (a["fecha"] < fin_ts)],
         "vacaciones": v[(v["fecha_inicio"] < fin_ts) & (v["fecha_fin"] >= ini)],
     }
@@ -331,33 +343,6 @@ def _demo_tickets(rng: np.random.Generator) -> pd.DataFrame:
                         "valor": 1,
                     }
                 )
-    return pd.DataFrame(filas)
-
-
-def _demo_proyectos(col: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame:
-    hoy = date.today()
-    filas = []
-    for area in [a for a in AREAS if a not in AREAS_SIN_FUENTE]:
-        miembros = col.loc[col["area"] == area, "nombre"].to_numpy()
-        for n in range(int(rng.integers(3, 6))):
-            inicio = hoy - timedelta(days=int(rng.integers(20, 180)))
-            fin_plan = inicio + timedelta(days=int(rng.integers(45, 150)))
-            avance_plan = float(np.clip((hoy - inicio).days / (fin_plan - inicio).days * 100, 0, 100))
-            avance_real = float(np.clip(avance_plan + rng.normal(-5, 15), 0, 100))
-            completado = avance_real >= 100 or (hoy > fin_plan and rng.random() < 0.6)
-            filas.append(
-                {
-                    "area": area,
-                    "responsable": rng.choice(miembros) if len(miembros) else None,
-                    "nombre": f"Proyecto {area} {n + 1}",
-                    "fecha_inicio": inicio,
-                    "fecha_fin_plan": fin_plan,
-                    "fecha_fin_real": fin_plan + timedelta(days=int(rng.integers(-10, 20))) if completado else None,
-                    "avance_plan": round(avance_plan),
-                    "avance_real": 100 if completado else round(avance_real),
-                    "estado": "completado" if completado else rng.choice(["en_curso", "en_curso", "en_curso", "detenido"]),
-                }
-            )
     return pd.DataFrame(filas)
 
 
