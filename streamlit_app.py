@@ -26,6 +26,25 @@ page = st.navigation(
 )
 
 datos = cargar_datos()
+# Tras un despliegue, Streamlit Cloud puede seguir con módulos o caché de la versión anterior:
+# si faltan datos que esperan las páginas, recarga los módulos y la caché una vez.
+CLAVES_DATOS = {"tickets", "colaboradores", "proyectos_todos", "asignaciones", "proyectos_area", "asistencias",
+                "vacaciones", "fuentes"}
+if not CLAVES_DATOS <= datos.keys() and not st.session_state.get("datos_recargados"):
+    import importlib
+
+    import tablero.acceso
+    import tablero.config
+    import tablero.data
+    import tablero.metrics
+    import tablero.persona
+    import tablero.proyectos
+
+    for modulo in (tablero.config, tablero.proyectos, tablero.data, tablero.acceso, tablero.metrics, tablero.persona):
+        importlib.reload(modulo)
+    st.cache_data.clear()
+    st.session_state.datos_recargados = True
+    st.rerun()
 acceso = resolver_acceso(datos["colaboradores"])
 st.session_state.acceso = acceso
 if acceso is None:
