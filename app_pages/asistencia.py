@@ -205,9 +205,12 @@ with st.container(border=True):
         clave = actual
     año, mes = map(int, clave.split("-"))
 
-    # Vacaciones de las áreas elegidas, más Dirección y grupos fuera de las 6 áreas (no tienen filtro propio)
+    # El filtro de áreas aplica a su equipo; Dirección, grupos fuera de las áreas y, para un usuario con
+    # equipo, su jefe y compañeros (no son de sus áreas) se muestran siempre
     vac_cal = datos["vacaciones_calendario"]
-    vac_cal = vac_cal[vac_cal["area"].isin(areas) | ~vac_cal["area"].isin(AREAS)]
+    equipo_propio = st.session_state.acceso["personas"]
+    fuera_de_equipo = ~vac_cal["colaborador_id"].isin(equipo_propio) if equipo_propio is not None else False
+    vac_cal = vac_cal[vac_cal["area"].isin(areas) | ~vac_cal["area"].isin(AREAS) | fuera_de_equipo]
     dias_vac = vac_cal[(vac_cal["fecha"].dt.year == año) & (vac_cal["fecha"].dt.month == mes)]
     tema = st.context.theme.type or "light"
     otras_areas = sorted(set(vac_cal["area"].dropna()) - set(AREAS))

@@ -5,7 +5,7 @@ SQL Server ServiceDesk ──ETL──▶ Supabase ──▶ Streamlit
 (RDL_TICKETS, RDL_TICKETS_ABIERTOS)
 ```
 
-Áreas: Desarrollo, Eficiencia, Soporte, Base de datos, Gestor de claves, PMS.
+Áreas: Desarrollo, Eficiencia, Soporte, Base de datos, Gestor de claves, PMS, Seguridad de la información.
 
 ## Estado de las fuentes
 
@@ -63,7 +63,7 @@ Sin `secrets.toml` los tickets salen en modo demo.
 - **Estado**: `Resuelto`/`Solucionado` = cerrado, `Cancelar` = cancelado, el resto = abierto.
 - **Resolución (días)**: `FechaResuelto − FechaCreacion`. ServiceDesk no trae la hora de creación, así que se cuenta desde las 00:00.
 - **SLA**: resolución ≤ meta por prioridad (`SLA_DIAS`: Alta 1, Media 2, Baja 3 días).
-- **Personas**: listado oficial (`data/personal.csv`). Los tickets cuentan en el área de su subárea de ServiceDesk; los indicadores por persona usan `resolutor_id` = `id_empleado`. Estrategia digital y Seguridad de la información quedan fuera de las 6 áreas.
+- **Personas**: listado oficial (`data/personal.csv`). Los tickets cuentan en el área de su subárea de ServiceDesk; los indicadores por persona usan `resolutor_id` = `id_empleado`. Estrategia digital y Dirección quedan fuera de las áreas: no entran en indicadores, solo en el calendario de vacaciones (cada usuario ve ahí a su equipo, su jefe y quienes reportan al mismo jefe).
 - **Backlog**: tickets abiertos hoy, sin importar el periodo.
 - **Retardo**: entrada > `InicioJornada` + 15 min (el SP marca R desde el primer minuto; se recalcula).
 - **Vacaciones programadas**: el ETL de asistencias consulta hasta 2 meses adelante; los días futuros se borran y recargan en cada corrida (una cancelación desaparece). En el calendario se ven con borde punteado.
