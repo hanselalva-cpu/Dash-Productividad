@@ -17,7 +17,8 @@ SUBAREAS_POR_AREA = {
     "Base de datos": [2],                                   # BASE DE DATOS
     "Soporte": [3, 4, 5],                                   # Soporte; Servidores, Redes, WiFi; Telefonía, Marcadores
     "Gestor de claves": [28, 29, 30, 31, 32, 33, 34, 35, 36, 43],  # Area 36
-    "Eficiencia": [45, 46, 47, 48],                         # Area 38 Eficiencia Operativa
+    "Eficiencia": [45, 46, 47, 48,                          # Area 38 Eficiencia Operativa
+                   19, 37, 38, 39, 40, 41, 42],             # Area 27 Command Center
     "Seguridad de la información": [6],                     # Area 22: Gestión de Incidentes
 }
 
