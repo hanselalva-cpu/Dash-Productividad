@@ -29,7 +29,7 @@ datos = cargar_datos()
 # Tras un despliegue, Streamlit Cloud puede seguir con módulos o caché de la versión anterior:
 # si faltan datos que esperan las páginas, recarga los módulos y la caché una vez.
 CLAVES_DATOS = {"tickets", "colaboradores", "proyectos_todos", "asignaciones", "proyectos_area", "asistencias",
-                "vacaciones", "fuentes"}
+                "vacaciones", "vacaciones_calendario", "fuentes"}
 if not CLAVES_DATOS <= datos.keys() and not st.session_state.get("datos_recargados"):
     import importlib
 

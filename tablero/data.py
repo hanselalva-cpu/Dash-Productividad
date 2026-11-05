@@ -230,10 +230,11 @@ def _preparar_asistencia(col: pd.DataFrame, crudo: pd.DataFrame) -> dict[str, pd
                 - pd.to_timedelta(a["entrada"].astype("string"), errors="coerce")).dt.total_seconds() / 60
     a["una_checada"] = a["presente"] & duracion.between(-10, 10)
     a["semana"] = a["fecha"].dt.to_period("W").dt.start_time
-    return {"asistencias": a, "vacaciones": _bloques_vacaciones(a)}
+    # Días de vacaciones de todo el personal (incluye Dirección y grupos fuera de las 6 áreas) para el calendario
+    return {"asistencias": a, "vacaciones": bloques_vacaciones(a), "vacaciones_calendario": a[a["estatus"] == "vacaciones"]}
 
 
-def _bloques_vacaciones(a: pd.DataFrame) -> pd.DataFrame:
+def bloques_vacaciones(a: pd.DataFrame) -> pd.DataFrame:
     """Agrupa días de vacaciones consecutivos (huecos de hasta 3 días, ej. fin de semana) en periodos."""
     vac = a[a["estatus"] == "vacaciones"].sort_values(["colaborador_id", "fecha"])
     if vac.empty:
@@ -387,4 +388,4 @@ def datos_visibles() -> dict:
     acceso = st.session_state.get("acceso")
     if not acceso:
         st.stop()  # sin acceso resuelto no se muestra nada
-    return restringir(cargar_datos(), acceso["personas"], acceso["areas"])
+    return restringir(cargar_datos(), acceso["personas"], acceso["areas"], acceso.get("vacaciones_de"))

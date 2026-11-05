@@ -6,7 +6,7 @@ import streamlit as st
 
 from tablero.calendario import MESES, calendario_html, colores_por_area
 from tablero.config import AREAS, TOLERANCIA_RETARDO_MIN
-from tablero.data import datos_visibles, filtrar, periodo_anterior
+from tablero.data import bloques_vacaciones, datos_visibles, filtrar, periodo_anterior
 from tablero.metrics import delta, fmt_num, fmt_pct, kpis
 
 inicio, fin, areas, edificios = st.session_state.filtro
@@ -205,10 +205,13 @@ with st.container(border=True):
         clave = actual
     año, mes = map(int, clave.split("-"))
 
-    fm = filtrar(datos, date(año, mes, 1), date(año, mes, calendar.monthrange(año, mes)[1]), areas, edificios)
-    dias_vac = fm["asistencias"][fm["asistencias"]["estatus"] == "vacaciones"]
+    # Vacaciones de las áreas elegidas, más Dirección y grupos fuera de las 6 áreas (no tienen filtro propio)
+    vac_cal = datos["vacaciones_calendario"]
+    vac_cal = vac_cal[vac_cal["area"].isin(areas) | ~vac_cal["area"].isin(AREAS)]
+    dias_vac = vac_cal[(vac_cal["fecha"].dt.year == año) & (vac_cal["fecha"].dt.month == mes)]
     tema = st.context.theme.type or "light"
-    colores = colores_por_area(AREAS, tema)
+    otras_areas = sorted(set(vac_cal["area"].dropna()) - set(AREAS))
+    colores = colores_por_area(AREAS + otras_areas, tema)
 
     if dias_vac.empty:
         st.info(f"Sin vacaciones registradas en {meses[clave]}.", icon=":material/beach_access:")
@@ -218,7 +221,7 @@ with st.container(border=True):
             f'<span style="display:inline-block;margin:0 12px 4px 0;font-size:12px;">'
             f'<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:{colores[a]};'
             f'margin-right:5px;"></span>{a}: {r.personas} persona{"s" if r.personas != 1 else ""} · {r.dias} días</span>'
-            for a, r in resumen.reindex([a for a in AREAS if a in resumen.index]).iterrows()
+            for a, r in resumen.reindex([a for a in AREAS + otras_areas if a in resumen.index]).iterrows()
         )
         st.html(f"<div>{leyenda}</div>" + calendario_html(año, mes, dias_vac, colores, tema))
         st.caption("Borde sólido: vacaciones tomadas. Borde punteado: programadas (posteriores a hoy). "
@@ -229,8 +232,8 @@ with st.container(border=True):
     tomadas_año = vac_año[vac_año["fecha"].dt.date <= hoy].groupby("colaborador_id").size()
     programadas_año = vac_año[vac_año["fecha"].dt.date > hoy].groupby("colaborador_id").size()
 
-    proximas = datos["vacaciones"]
-    proximas = proximas[(proximas["fecha_fin"].dt.date > hoy) & proximas["area"].isin(areas)]
+    proximas = bloques_vacaciones(vac_cal)
+    proximas = proximas[proximas["fecha_fin"].dt.date > hoy] if not proximas.empty else proximas
     if not proximas.empty:
         st.markdown(f"**Próximas vacaciones programadas** · {proximas['colaborador_id'].nunique()} personas")
         st.dataframe(

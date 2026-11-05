@@ -117,28 +117,43 @@ def equipo(col: pd.DataFrame, raiz: str) -> set[str]:
     return visto
 
 
+def calendario_vacaciones(col: pd.DataFrame, id_empleado: str, ids_equipo: set[str]) -> set[str]:
+    """Para coordinar coberturas: su equipo, su jefe directo y quienes reportan al mismo jefe."""
+    jefe = col.loc[col["id"] == id_empleado, "reporta_a_id"].dropna()
+    if jefe.empty:
+        return set(ids_equipo)
+    jefe = jefe.iloc[0]
+    pares = set(col.loc[col["reporta_a_id"] == jefe, "id"])
+    return set(ids_equipo) | {jefe} | pares
+
+
 def resolver_acceso(col: pd.DataFrame) -> dict | None:
-    """{"nombre", "correo", "personas" (None = todas), "areas"} o None si no tiene acceso."""
+    """{"nombre", "correo", "personas" (None = todas), "areas", "vacaciones_de"} o None si no tiene acceso.
+
+    vacaciones_de: a quién puede ver en el calendario de vacaciones (None = todos).
+    """
     correo = correo_actual()
     if correo is None and es_local():
-        return {"nombre": "Local", "correo": None, "personas": None, "areas": AREAS}
+        return {"nombre": "Local", "correo": None, "personas": None, "areas": AREAS, "vacaciones_de": None}
     id_empleado = _accesos().get(correo or "")
     persona = col[col["id"] == id_empleado]
     if not id_empleado or persona.empty:
         return None
     p = persona.iloc[0]
     if pd.isna(p["reporta_a_id"]):
-        return {"nombre": p["nombre"], "correo": correo, "personas": None, "areas": AREAS}
+        return {"nombre": p["nombre"], "correo": correo, "personas": None, "areas": AREAS, "vacaciones_de": None}
     ids = equipo(col, id_empleado)
     areas_equipo = set(col.loc[col["id"].isin(ids), "area"])
     return {"nombre": p["nombre"], "correo": correo, "personas": ids,
-            "areas": [a for a in AREAS if a in areas_equipo]}
+            "areas": [a for a in AREAS if a in areas_equipo],
+            "vacaciones_de": calendario_vacaciones(col, id_empleado, ids)}
 
 
-def restringir(d: dict, personas: set[str] | None, areas: list[str]) -> dict:
+def restringir(d: dict, personas: set[str] | None, areas: list[str], vacaciones_de: set[str] | None = None) -> dict:
     """Recorta todos los datos a lo que el usuario puede ver."""
     if personas is None:
         return d
+    vac = d["vacaciones_calendario"]
     t = d["tickets"]
     return {
         **d,
@@ -148,6 +163,7 @@ def restringir(d: dict, personas: set[str] | None, areas: list[str]) -> dict:
         **_proyectos_visibles(d, personas, areas),
         "asistencias": d["asistencias"][d["asistencias"]["colaborador_id"].isin(personas)],
         "vacaciones": d["vacaciones"][d["vacaciones"]["colaborador_id"].isin(personas)],
+        "vacaciones_calendario": vac[vac["colaborador_id"].isin(vacaciones_de or personas)],
     }
 
 
