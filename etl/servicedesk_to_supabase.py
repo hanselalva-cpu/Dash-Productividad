@@ -4,6 +4,7 @@ Uso (desde la raíz del proyecto):
     python -m etl.servicedesk_to_supabase                      # incremental: últimos 60 días + abiertos
     python -m etl.servicedesk_to_supabase --desde 2025-01-01   # carga histórica
     python -m etl.servicedesk_to_supabase --dry-run            # no escribe en Supabase; guarda CSV
+    python -m etl.servicedesk_to_supabase --desde 2025-01-01 --area "Seguridad de la información"  # un área
 
 Credenciales en .env: SQLSERVER_HOST, SQLSERVER_DB, SQLSERVER_USER, SQLSERVER_PASSWORD,
 SUPABASE_URL, SUPABASE_SECRET_KEY.
@@ -64,9 +65,12 @@ def _ejecutar(cn: pyodbc.Connection, sql: str, params: list) -> pd.DataFrame:
     return pd.DataFrame.from_records([tuple(r) for r in cur.fetchall()], columns=columnas)
 
 
+AREAS_A_CARGAR = dict(SUBAREAS_POR_AREA)  # --area la limita a una sola
+
+
 def _por_edificio_y_subarea(cn: pyodbc.Connection, sql: str, params_fecha: list) -> pd.DataFrame:
     partes = []
-    for area, subareas in SUBAREAS_POR_AREA.items():
+    for area, subareas in AREAS_A_CARGAR.items():
         for subarea_id in subareas:
             for edificio_id in EDIFICIOS:
                 df = _ejecutar(cn, sql, [*params_fecha, edificio_id, subarea_id])
@@ -203,7 +207,11 @@ def main() -> int:
     parser.add_argument("--hasta", type=date.fromisoformat, default=date.today())
     parser.add_argument("--dry-run", action="store_true", help="No escribe en Supabase; guarda CSV")
     parser.add_argument("--csv", default="tickets_servicedesk.csv", help="Ruta del CSV en --dry-run")
+    parser.add_argument("--area", choices=list(SUBAREAS_POR_AREA), help="Cargar solo esta área (ej. histórico de un área nueva)")
     args = parser.parse_args()
+    if args.area:
+        AREAS_A_CARGAR.clear()
+        AREAS_A_CARGAR[args.area] = SUBAREAS_POR_AREA[args.area]
 
     load_dotenv()
     inicio = datetime.now()

@@ -43,6 +43,7 @@ Ninguno de esos archivos se sube a git.
 .venv\Scripts\python -m etl.servicedesk_to_supabase --desde 2025-01-01   # carga histórica (una vez)
 .venv\Scripts\python -m etl.servicedesk_to_supabase                      # incremental
 .venv\Scripts\python -m etl.servicedesk_to_supabase --dry-run            # solo extrae a CSV
+.venv\Scripts\python -m etl.servicedesk_to_supabase --desde 2025-01-01 --area "Seguridad de la información"  # histórico de un área
 ```
 
 - Los SPs reciben `@Edificio` y `@Subarea` como **IDs**; NULL no significa "todos". El ETL recorre edificio × subárea.
