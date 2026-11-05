@@ -66,6 +66,7 @@ Sin `secrets.toml` los tickets salen en modo demo.
 - **Personas**: listado oficial (`data/personal.csv`). Los tickets cuentan en el área de su subárea de ServiceDesk; los indicadores por persona usan `resolutor_id` = `id_empleado`. Estrategia digital y Seguridad de la información quedan fuera de las 6 áreas.
 - **Backlog**: tickets abiertos hoy, sin importar el periodo.
 - **Retardo**: entrada > `InicioJornada` + 15 min (el SP marca R desde el primer minuto; se recalcula).
+- **Vacaciones programadas**: el ETL de asistencias consulta hasta 2 meses adelante; los días futuros se borran y recargan en cada corrida (una cancelación desaparece). En el calendario se ven con borde punteado.
 - **% Asistencia**: días laborados (A/R/TC) ÷ días laborables (sin descansos, vacaciones ni incapacidades).
 - **Proyectos**: semáforo = avance contra avance esperado (días transcurridos ÷ días planeados). Atención alta: vencido o 30 pts+ abajo; media: 15–30 pts. Responsables homologados con `data/alias_personas.csv` (no se sube a git). El área de un proyecto son las áreas de sus responsables; PMS cuenta todo su portafolio.
 - **Validación de checadas**: días laborados sin entrada, sin salida, sin horario o con una sola checada.

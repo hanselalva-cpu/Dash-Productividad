@@ -24,9 +24,11 @@ INDICADORES_PERSONA = {
 
 
 def años_disponibles(datos: dict) -> list[int]:
-    años = set(datos["asistencias"]["fecha"].dt.year.dropna().astype(int))
+    hoy = date.today()
+    fechas = datos["asistencias"]["fecha"]
+    años = set(fechas[fechas.dt.date <= hoy].dt.year.dropna().astype(int))  # sin vacaciones programadas a futuro
     años |= set(datos["tickets"]["fecha_resuelto"].dt.year.dropna().astype(int))
-    return sorted(años, reverse=True) or [date.today().year]
+    return sorted(años, reverse=True) or [hoy.year]
 
 
 def mensual(datos: dict, ids: list[str], año: int) -> pd.DataFrame:

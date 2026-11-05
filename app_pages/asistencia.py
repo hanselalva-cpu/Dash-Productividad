@@ -189,17 +189,20 @@ with st.container(border=True):
 
 with st.container(border=True):
     st.subheader("Calendario de vacaciones")
-    meses = {f"{m.year}-{m.month:02d}": f"{MESES[m.month]} {m.year}" for m in pd.period_range(inicio, fin, freq="M")}
+    # Del inicio del periodo hasta 2 meses adelante (vacaciones ya programadas en el sistema de incidencias)
+    hoy = date.today()
+    limite = (pd.Timestamp(hoy) + pd.DateOffset(months=2)).date()
+    meses = {f"{m.year}-{m.month:02d}": f"{MESES[m.month]} {m.year}"
+             for m in pd.period_range(min(inicio, hoy), limite, freq="M")}
     claves = list(meses)
-    if len(claves) == 1:
-        clave = claves[0]
-    elif len(claves) <= 6:
-        clave = st.segmented_control("Mes", claves, default=claves[-1], format_func=meses.get, required=True,
+    actual = f"{hoy.year}-{hoy.month:02d}"
+    if len(claves) <= 6:
+        clave = st.segmented_control("Mes", claves, default=actual, format_func=meses.get, required=True,
                                      key="vac_mes")
     else:
-        clave = st.selectbox("Mes", claves, index=len(claves) - 1, format_func=meses.get, key="vac_mes_lista")
+        clave = st.selectbox("Mes", claves, index=claves.index(actual), format_func=meses.get, key="vac_mes_lista")
     if clave not in meses:
-        clave = claves[-1]
+        clave = actual
     año, mes = map(int, clave.split("-"))
 
     fm = filtrar(datos, date(año, mes, 1), date(año, mes, calendar.monthrange(año, mes)[1]), areas, edificios)
@@ -208,7 +211,7 @@ with st.container(border=True):
     colores = colores_por_area(AREAS, tema)
 
     if dias_vac.empty:
-        st.info(f"Nadie tomó vacaciones en {meses[clave]}.", icon=":material/beach_access:")
+        st.info(f"Sin vacaciones registradas en {meses[clave]}.", icon=":material/beach_access:")
     else:
         resumen = dias_vac.groupby("area").agg(personas=("colaborador_id", "nunique"), dias=("fecha", "size"))
         leyenda = " ".join(
@@ -218,18 +221,20 @@ with st.container(border=True):
             for a, r in resumen.reindex([a for a in AREAS if a in resumen.index]).iterrows()
         )
         st.html(f"<div>{leyenda}</div>" + calendario_html(año, mes, dias_vac, colores, tema))
-        st.caption("Pasa el cursor sobre un nombre para ver el nombre completo y el área.")
+        st.caption("Borde sólido: vacaciones tomadas. Borde punteado: programadas (posteriores a hoy). "
+                   "Pasa el cursor sobre un nombre para ver el nombre completo y el área.")
 
-    with st.expander("Detalle de periodos de vacaciones", icon=":material/table_rows:"):
-        tomadas_año = (
-            datos["asistencias"][(datos["asistencias"]["estatus"] == "vacaciones")
-                                 & (datos["asistencias"]["fecha"].dt.year == date.today().year)]
-            .groupby("colaborador_id").size()
-        )
-        v = f["vacaciones"].assign(dias_año=lambda df: df["colaborador_id"].map(tomadas_año).fillna(0).astype(int))
+    vac_año = datos["asistencias"][(datos["asistencias"]["estatus"] == "vacaciones")
+                                   & (datos["asistencias"]["fecha"].dt.year == hoy.year)]
+    tomadas_año = vac_año[vac_año["fecha"].dt.date <= hoy].groupby("colaborador_id").size()
+    programadas_año = vac_año[vac_año["fecha"].dt.date > hoy].groupby("colaborador_id").size()
+
+    proximas = datos["vacaciones"]
+    proximas = proximas[(proximas["fecha_fin"].dt.date > hoy) & proximas["area"].isin(areas)]
+    if not proximas.empty:
+        st.markdown(f"**Próximas vacaciones programadas** · {proximas['colaborador_id'].nunique()} personas")
         st.dataframe(
-            v.sort_values("fecha_inicio", ascending=False)[["colaborador", "area", "fecha_inicio", "fecha_fin", "dias",
-                                                            "dias_año"]],
+            proximas.sort_values("fecha_inicio")[["colaborador", "area", "fecha_inicio", "fecha_fin", "dias"]],
             hide_index=True,
             column_config={
                 "colaborador": "Colaborador",
@@ -237,7 +242,27 @@ with st.container(border=True):
                 "fecha_inicio": st.column_config.DateColumn("Desde", format="DD/MM/YYYY"),
                 "fecha_fin": st.column_config.DateColumn("Hasta", format="DD/MM/YYYY"),
                 "dias": st.column_config.NumberColumn("Días"),
-                "dias_año": st.column_config.NumberColumn(f"Días tomados {date.today().year}"),
+            },
+            alt="Vacaciones programadas a partir de hoy",
+        )
+
+    with st.expander("Detalle de periodos de vacaciones", icon=":material/table_rows:"):
+        v = f["vacaciones"].assign(
+            dias_año=lambda df: df["colaborador_id"].map(tomadas_año).fillna(0).astype(int),
+            programadas=lambda df: df["colaborador_id"].map(programadas_año).fillna(0).astype(int),
+        )
+        st.dataframe(
+            v.sort_values("fecha_inicio", ascending=False)[["colaborador", "area", "fecha_inicio", "fecha_fin", "dias",
+                                                            "dias_año", "programadas"]],
+            hide_index=True,
+            column_config={
+                "colaborador": "Colaborador",
+                "area": "Área",
+                "fecha_inicio": st.column_config.DateColumn("Desde", format="DD/MM/YYYY"),
+                "fecha_fin": st.column_config.DateColumn("Hasta", format="DD/MM/YYYY"),
+                "dias": st.column_config.NumberColumn("Días"),
+                "dias_año": st.column_config.NumberColumn(f"Días tomados {hoy.year}"),
+                "programadas": st.column_config.NumberColumn(f"Programadas {hoy.year}"),
             },
             alt="Periodos de vacaciones en el periodo seleccionado",
         )

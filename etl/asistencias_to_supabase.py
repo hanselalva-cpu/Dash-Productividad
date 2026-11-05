@@ -1,7 +1,7 @@
 """Copia asistencias de REPORTES_INCIDENCIAS (SQL Server) a Supabase, solo del personal del listado.
 
 Uso (desde la raíz del proyecto):
-    python -m etl.asistencias_to_supabase                      # incremental: últimos 45 días
+    python -m etl.asistencias_to_supabase                      # incremental: últimos 45 días + 2 meses adelante
     python -m etl.asistencias_to_supabase --desde 2025-01-01   # carga histórica
     python -m etl.asistencias_to_supabase --dry-run            # no escribe en Supabase; guarda CSV
 
@@ -22,6 +22,7 @@ from tablero.config import ESTATUS_INCIDENCIA, TOLERANCIA_RETARDO_MIN
 BASE = "REPORTES_INCIDENCIAS"
 SQL = "SET NOCOUNT ON; EXEC dbo.OBTENER_INFORME_EVENTOS @FECHA_INICIO=?, @FECHA_FIN=?"
 DIAS_VENTANA_INCREMENTAL = 45  # las incidencias se justifican/corrigen después del día
+DIAS_FUTURO = 62  # vacaciones ya programadas: el SP devuelve fechas futuras
 RUTA_PERSONAL = "data/personal.csv"
 
 
@@ -82,7 +83,11 @@ def transformar(crudo: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def cargar(sb, df: pd.DataFrame) -> None:
+def cargar(sb, df: pd.DataFrame, hasta: date) -> None:
+    # Días futuros: se borran y se vuelven a cargar, para que una vacación cancelada no se quede
+    hoy = date.today()
+    if hasta > hoy:
+        sb.table("asistencias").delete().gt("fecha", hoy.isoformat()).lte("fecha", hasta.isoformat()).execute()
     df = df.assign(actualizado=datetime.now().isoformat(timespec="seconds"))
     registros = df.astype(object).where(df.notna(), None).to_dict("records")
     for i in range(0, len(registros), LOTE_UPSERT):
@@ -93,7 +98,7 @@ def cargar(sb, df: pd.DataFrame) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--desde", type=date.fromisoformat, help="Fecha inicial (YYYY-MM-DD)")
-    parser.add_argument("--hasta", type=date.fromisoformat, default=date.today())
+    parser.add_argument("--hasta", type=date.fromisoformat, default=date.today() + timedelta(days=DIAS_FUTURO))
     parser.add_argument("--dry-run", action="store_true", help="No escribe en Supabase; guarda CSV")
     parser.add_argument("--csv", default="asistencias.csv", help="Ruta del CSV en --dry-run")
     args = parser.parse_args()
@@ -111,7 +116,7 @@ def main() -> int:
             asistencias.to_csv(args.csv, index=False, encoding="utf-8-sig")
             print(f"  {len(asistencias)} días -> {args.csv}")
         else:
-            cargar(sb, asistencias)
+            cargar(sb, asistencias, args.hasta)
             _registrar(sb, inicio, desde, args.hasta, len(asistencias), "ok")
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
