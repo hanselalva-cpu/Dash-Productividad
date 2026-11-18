@@ -154,7 +154,7 @@ def main() -> None:
         f.write(html(nombre, lista, vac, festivos, pers))
     edge = next((e for e in EDGE if os.path.exists(e)), None)
     if edge:
-        subprocess.run([edge, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=960,600",
+        subprocess.run([edge, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=960,720",
                         f"--screenshot={base}.png", "file:///" + (base + ".html").replace("\\", "/")],
                        capture_output=True, timeout=60)
 
